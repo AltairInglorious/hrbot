@@ -16,11 +16,11 @@ import (
 
 type Bot struct {
 	conn     *websocket.Conn
-	handler  func(*Bot, string)
+	handler  func(*Bot, []byte)
 	outgoing chan []byte
 }
 
-func NewBot(handler func(bot *Bot, msg string)) (*Bot, error) {
+func NewBot(handler func(bot *Bot, msg []byte)) (*Bot, error) {
 	u := url.URL{Scheme: "wss", Host: "production.highrise.game", Path: "/web/webapi"}
 
 	headers := http.Header{}
@@ -77,10 +77,10 @@ func (b *Bot) listen() {
 		switch messageType {
 		case websocket.TextMessage:
 			log.Printf("received text message: %v", message)
-			go b.handler(b, string(message))
+			go b.handler(b, message)
 		case websocket.BinaryMessage:
 			log.Printf("received binary message: %v", message)
-			go b.handler(b, string(message))
+			go b.handler(b, message)
 		case websocket.CloseMessage:
 			log.Fatalf("received close message")
 		}
