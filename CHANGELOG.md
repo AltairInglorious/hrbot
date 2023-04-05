@@ -1,3 +1,10 @@
+# [1.0.4] - 2023-04-05
+## Added
+- Added the `SendRawRequest` function to send a raw request to the WebSocket - connection.
+
+## Fixed
+- Fixed concurrent write to websocket connection
+
 # [1.0.3] - 2023-04-05
 ## Added
 - Added the SendPublicMessage function to send a public message to the chat.

@@ -15,8 +15,9 @@ import (
 )
 
 type Bot struct {
-	conn    *websocket.Conn
-	handler func(*Bot, string)
+	conn     *websocket.Conn
+	handler  func(*Bot, string)
+	outgoing chan []byte
 }
 
 func NewBot(handler func(bot *Bot, msg string)) (*Bot, error) {
@@ -48,17 +49,20 @@ func NewBot(handler func(bot *Bot, msg string)) (*Bot, error) {
 	}
 
 	bot := &Bot{
-		conn:    conn,
-		handler: handler,
+		conn:     conn,
+		handler:  handler,
+		outgoing: make(chan []byte, 100),
 	}
 
 	go bot.listen()
 	go bot.timeOut()
+	go bot.writeLoop()
 
 	return bot, nil
 }
 
 func (b *Bot) Close() {
+	close(b.outgoing)
 	b.conn.Close()
 }
 
@@ -98,4 +102,12 @@ func getEnv(key, fallback string) string {
 		panic("Missing env variable: " + key)
 	}
 	return fallback
+}
+
+func (b *Bot) writeLoop() {
+	for message := range b.outgoing {
+		if err := b.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+			log.Printf("could not write message to WebSocket connection: %v", err)
+		}
+	}
 }
