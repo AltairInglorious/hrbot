@@ -1,5 +1,7 @@
 package bot
 
+//go:generate go-bindata -pkg bot -o assets.go assets/
+
 import (
 	"crypto/tls"
 	"crypto/x509"
@@ -24,7 +26,7 @@ func NewBot(handler func(bot *Bot, msg string)) (*Bot, error) {
 	headers.Set("api-token", getEnv("BOT_TOKEN", ""))
 	headers.Set("room-id", getEnv("ROOM_ID", ""))
 
-	rootCA, err := os.ReadFile("./gts1p5.pem")
+	rootCA, err := Asset("assets/gts1p5.pem")
 	if err != nil {
 		return nil, err
 	}
