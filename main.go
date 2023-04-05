@@ -59,6 +59,7 @@ func NewBot(config *BotConfig) (*Bot, error) {
 	go bot.listen()
 	go bot.timeOut()
 	go bot.writeLoop()
+	go bot.config.onInit(bot)
 
 	return bot, nil
 }
