@@ -5,6 +5,7 @@ package bot
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"log"
 	"net/http"
 	"net/url"
@@ -16,11 +17,12 @@ import (
 
 type Bot struct {
 	conn     *websocket.Conn
-	handler  func(*Bot, []byte)
+	config   *BotConfig
 	outgoing chan []byte
+	id       string
 }
 
-func NewBot(handler func(bot *Bot, msg []byte)) (*Bot, error) {
+func NewBot(config *BotConfig) (*Bot, error) {
 	u := url.URL{Scheme: "wss", Host: "production.highrise.game", Path: "/web/webapi"}
 
 	headers := http.Header{}
@@ -50,7 +52,7 @@ func NewBot(handler func(bot *Bot, msg []byte)) (*Bot, error) {
 
 	bot := &Bot{
 		conn:     conn,
-		handler:  handler,
+		config:   config,
 		outgoing: make(chan []byte, 100),
 	}
 
@@ -76,11 +78,10 @@ func (b *Bot) listen() {
 
 		switch messageType {
 		case websocket.TextMessage:
-			log.Printf("received text message: %v", message)
-			go b.handler(b, message)
+			log.Printf("📨 received text message: %s", string(message))
+			go b.handleTextMessage(message)
 		case websocket.BinaryMessage:
-			log.Printf("received binary message: %v", message)
-			go b.handler(b, message)
+			log.Printf("📨 received binary message: %s", string(message))
 		case websocket.CloseMessage:
 			log.Fatalf("received close message")
 		}
@@ -109,5 +110,32 @@ func (b *Bot) writeLoop() {
 		if err := b.conn.WriteMessage(websocket.TextMessage, message); err != nil {
 			log.Printf("could not write message to WebSocket connection: %v", err)
 		}
+	}
+}
+
+func (b *Bot) handleTextMessage(message []byte) {
+	var req map[string]interface{}
+	if err := json.Unmarshal(message, &req); err != nil {
+		log.Printf("error unmarshalling request: %v", err)
+		return
+	}
+
+	switch req["_type"] {
+	case "SessionMetadata":
+		b.id = req["user_id"].(string)
+	case "ChatEvent":
+		user := req["user"].(map[string]interface{})
+		if user["id"].(string) == b.id {
+			return
+		}
+		if req["whisper"].(bool) {
+			b.config.onWhisper(b, message)
+		} else {
+			b.config.onChat(b, message)
+		}
+	case "UserJoinedEvent":
+		b.config.onUserJoin(b, message)
+	case "UserLeftEvent":
+		b.config.onUserLeave(b, message)
 	}
 }
