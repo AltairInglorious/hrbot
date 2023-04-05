@@ -1,3 +1,7 @@
+# [1.1.0] - 2023-04-05
+## Added
+- Config struct to store the bot configuration
+
 # [1.0.4] - 2023-04-05
 ## Added
 - Added the `SendRawRequest` function to send a raw request to the WebSocket - connection.
